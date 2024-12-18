@@ -1,0 +1,1046 @@
+<!--Version: 5.09.34.16-GTNH -->
+<!--Date: 2021/05/5 -->
+<!--Author: Amamiya-Nagisa -->
+<!--Editor: JimJokes, KuroPeach -->
+<!--扩展通过调用java获取数据 by Editor: JimJokes -->
+
+<!--Version: 5.09.34.16-GTNH -->
+<!--Date: 2022/08/8 -->
+
+<!--合并OO_显示ME输出总线输出仓物品.xml -->
+<!--Author: ViKaleidoscope -->
+
+<!--Date: 2015/04/22-->
+<!--Version: rv2-beta-28-->
+
+<!--合并OO_显示集成矿处工作模式.xml -->
+<!--Date: 2023/12/8-->
+
+<!--Version: 5.09.44.85-GTNH -->
+<!--Date: 2023/12/15 -->
+<!--Expander: Xi_Dauphal -->
+
+<!--xx注释xx -->
+<!--(colorcier)_instre为输入字符串,cont为三模式下划线、加粗、二者,cylc为是否多个颜色随机渐变  -->
+<!--(Arrayofpower)_为单方块机器显示额定电压  -->
+<!--(Arrayofbl)_为多方块发电机 某些不需要显示的机器 不显示功率 工作进程  -->
+<oo>
+
+<init>
+	importPackage(Packages.gregtech.api);
+    importPackage(Packages.gregtech.common.tileentities.machines.basic);
+
+    function getFormatNumber(mNumber){
+        return Packages.gregtech.api.util.GTUtility.formatNumbers(mNumber)
+    }
+
+    function getColoredTier(vol){
+        return Packages.gregtech.api.util.GTUtility.getColoredTierNameFromVoltage(vol)
+    }
+
+    function getCableVoltage(mID){
+        var tileEntity = Packages.gregtech.api.GregTechAPI.METATILEENTITIES[mID];
+        if (tileEntity.isSimpleMachine()){return tileEntity.mVoltage}
+    }
+
+    function getCableLoss(mID){
+        var tileEntity = Packages.gregtech.api.GregTechAPI.METATILEENTITIES[mID];
+        if (tileEntity.isSimpleMachine()){return tileEntity.mCableLossPerMeter}
+    }
+
+    function getAmperage(mID){
+        var tileEntity = Packages.gregtech.api.GregTechAPI.METATILEENTITIES[mID];
+        if (tileEntity.isSimpleMachine()){return tileEntity.mAmperage}
+    }
+
+    function getMachineVoltage(mID){
+        var tileEntity = Packages.gregtech.api.GregTechAPI.METATILEENTITIES[mID];
+        if (tileEntity.isElectric()){return tileEntity.maxEUInput()?tileEntity.maxEUInput():tileEntity.maxEUOutput()}
+    }
+	
+    function getAmpereOut(mID){
+        var tileEntity = Packages.gregtech.api.GregTechAPI.METATILEENTITIES[mID];
+        if (tileEntity.isEnetOutput()) {return tileEntity.maxAmperesOut()}
+    }
+
+    function getAmpereIn(mID){
+        var tileEntity = Packages.gregtech.api.GregTechAPI.METATILEENTITIES[mID];
+        if (tileEntity.isEnetInput()) {return tileEntity.maxAmperesIn()}
+    }
+
+    function isBetteryBuffer(mID){
+        return Packages.gregtech.api.GregTechAPI.METATILEENTITIES[mID] instanceof Packages.gregtech.api.metatileentity.implementations.MTEBasicBatteryBuffer
+    }
+
+    function isCharger(mID){
+        return Packages.gregtech.api.GregTechAPI.METATILEENTITIES[mID] instanceof Packages.gregtech.common.tileentities.machines.basic.MTECharger
+    }
+
+    function isTransformer(mID){
+        return Packages.gregtech.api.GregTechAPI.METATILEENTITIES[mID] instanceof Packages.gregtech.api.metatileentity.implementations.MTETransformer
+    }
+	
+	function formatBytes(bytes) {
+		if (bytes === 0) return 0;
+		var k = 10000,
+		sizes = ['', '§f万','§e亿','§6万亿', '§d亿亿', '§d万亿亿', '§4亿亿亿', '§d万亿亿亿', '§d亿亿亿亿' , '§d几乎∞无穷'],
+		i = Math.floor(Math.log(bytes) / Math.log(k));
+		if (i == 9){return sizes[i]}
+		if(sizes[i]){
+			n_out=bytes / Math.pow(k, i);
+			n_out=n_out.toFixed(n_out<10?2:(n_out<100 ? 1:0));
+			return n_out+sizes[i]
+		}
+		return bytes
+	}
+	
+	function sci_format(bytes) {
+		var	string_form	= bytes.toString(), pow_number	= "", head_number	= "";
+		if	(string_form[1] == '.'){
+			pow_number = string_form.slice(-2);
+			head_number = string_form.slice(0,5)
+		}else {
+			pow_number	= string_form.length()-1;
+			head_number	= string_form.slice(0,1) +'.'+string_form.slice(1,4);
+		}
+		return Number(pow_number) > 3?YELLOW+Number(head_number).toFixed(2)+GOLD+'x10^'+LPURPLE+Number(pow_number):bytes
+	}
+	
+	function formatBytes2(bytes) {
+		if (bytes === 0) return 0;
+		var k = 1000,
+		sizes = ['', 'K', 'M', 'G', 'T', 'P', 'E', 'Z', 'Y'],
+		i= Math.floor(Math.log(bytes) / Math.log(k));
+		if(sizes[i]){return (bytes / Math.pow(k, i)).toFixed(i==0 ? 0:2) + AQUA + ' ' + sizes[i] + ' ' }
+		return bytes
+	}
+	
+	function storedNumber(Nubmber){
+		var n_out=0, n_cot=1, k=0, j=1;
+		for(i = Nubmber.length() - 1; i >= 0; i--){
+			if (Nubmber[i] == "-") k=256-k;
+			else {k += Nubmber[i] * j; j *= 10;}
+			if (Nubmber[i-1] == "," || i == 0){n_out += k * n_cot; n_cot *= 256; k=0; j=1; i--}
+		}
+		return n_out
+	}
+	
+	function isBetween(min, max, val){
+		return min <= val && val <= max
+	}
+	
+	function standards(num) {
+		var prod = '', count = 0;
+		num = (num || 0).toString();
+		for (var i = num.length - 1; i >= 0; i--) {
+			count++;
+			prod = num.charAt(i) + prod;
+			if (!(count % 3) && i != 0) { prod = ',' + prod; }
+		}
+		return prod;
+	}
+	
+	function colorcier(instre,cont,cylc){
+		var stre = "",count = 0, key = 0,
+		colore = ['4','c','e','6','a','2','b','3','9','d'],
+		randile = parseInt(Math.random()* 10),
+		instre = (instre || 0).toString();
+		for (i = 0; i < instre.length; i++){
+			stre += "§" + colore[(randile+count)%10];
+			if (cylc != undefined){count++}
+			if (cont != undefined){
+				switch(cont){
+					case 1 : stre += "§n";break;
+					case 2 : stre += "§l";break;
+					case 3 : stre += "§n§l";break;
+				}
+			}
+			stre += instre.charAt(key);
+			key++;
+		}
+		return stre
+	}
+	
+	function GetVtier(valuev){
+		var VTier=['§7LV','§6MV','§eHV','§8EV','§aIV','§dLuv','§bZPM','§2UV','§4UHV','§5UEV','§9§n§lUIV','§c§n§lUMV','§4§n§lUXV','§f§n§lMAX','§cULV'];
+		stre2 = 0;value2 = 0;
+		if (valuev>536870915){stre2+=13}
+		if (valuev<32){stre2+=14}
+		for (i=0;i<13;i++){
+			if (value2!=0){break;}
+			tie = 8*Math.pow(4,i);
+			tie2 = 8*Math.pow(4,i+1);
+			if (tie<=valuev && valuev<= tie2){stre2+=i;value2++;}
+		}
+		return VTier[stre2];
+	}
+	
+	function judge(ite1){
+		if (ite1==0){return RED+"关闭"}
+		else return GREEN+"启用"
+	}
+	
+	function formatTimes(ticks) {
+            if (ticks != undefined){
+                var day=hour=min=second=0, result="", negative=ticks<0 ? 1:0;
+                ticks=Math.abs(ticks);
+                if (ticks>1728000){
+                    day=Math.floor(ticks/1728000);
+                    ticks-=day*1728000;
+                    result+=DRED+day+DRED+"天";
+                }
+                if (ticks>72000||day>0){
+                    hour=Math.floor(ticks/72000);
+                    ticks-=hour*72000;
+                    result+=RED+hour+RED+"时";
+                }
+                if (ticks>1200||day>0||hour>0){
+                    min=Math.floor(ticks/1200);
+                    ticks-=min*1200;
+                    result+=AQUA+min+AQUA+"分"
+                }
+                second = ticks/20;
+                second=(day+hour+min)>0||ticks>640 ? Math.floor(second):second.toFixed(2);
+                result+=GREEN+second+GREEN+"秒";
+                return negative ? result="-"+result : result;
+            }
+        }
+		
+	function Arrayofpower(mID){
+		var Arrays = [793,794,795,830,831,832,837,838,839,993,994,1110,1111,1112,1174,1175,1176,1196,1197,1198,10752,10753,12726,12727,12728,12793];
+		if (isBetween(1113,1130,mID)){return true}
+		if (isBetween(1188,1192,mID)){return true}
+		for (i=0;i<Arrays.length;i++){
+			if (mID==Arrays[i]){return true}
+			if (i==Arrays.length-1){return false}
+		}
+	}
+	
+	function Arrayofbl(mID){
+		var Arrays = [865,866,996,1005,1131,1151,1152,1153,1171,2105,13101,13102,31026,31073,31074,31076,32016,19026];
+		for (i=0;i<Arrays.length;i++){
+			if (mID==Arrays[i]){return false}
+			if (i==Arrays.length-1){return true}
+		}
+	}
+	
+	function Caceoh(){
+			var Itename = name(nbt['Inventory']['0']);
+			var Tier = 0;
+			if (Itename[0]!='T'){Tier+=1;}
+			if (Itename[0]=='T'){
+				if (parseInt(Itename[2])==0){Tier+=10;}
+				else Tier+=parseInt(Itename[1])+1;
+			}
+			return Tier
+	}
+	
+	function getMaxAmpere(nbt_EU){
+		return YELLOW+(nbt_EU/2147483640).toFixed(1)+GOLD+' A '+colorcier('MAX',3)
+	}
+	
+	function Mode(type){
+		return YELLOW+type
+	}
+</init>
+
+<tileentity id="BaseMetaTileEntity">
+		
+		<line displayname="§b当前模式">
+			if (isTransformer(nbt['mID'])){return YELLOW+(nbt['mWorks']==0 ? Mode("降压模式"):Mode("升压模式"))}
+		</line>
+		
+		<line displayname="§b机器加工">	
+            if (nbt['mWorks'] != undefined && isTransformer(nbt['mID']) == false){
+				if (nbt['mActive'] == 1){return GOLD + "运行中"}
+				if (nbt['mWorks'] == 0){
+					if (nbt['mActive'] == 0){return YELLOW + "待机中"}}
+				else return RED + "已关机"
+				}
+		</line>
+		
+		<line displayname="§b流体模式">	
+            if(nbt['mFluidMode']==0){return judge(1)}
+		</line>
+		
+		<line displayname="§b总线隔离 ">
+            if(nbt['inputSeparation']==1){return judge(1)}
+		</line>
+		
+		<line displayname="§b批量处理 ">
+            if(nbt['batchMode']==1){return judge(1)}
+		</line>
+		
+		<line displayname="§b无线模式 ">
+            if(nbt['wirelessMode']>=0 && nbt['wirelessMode']!=undefined){return judge(nbt['wirelessMode'])}
+		</line>
+		
+		<line displayname="§b接口ID ">
+            if(nbt['eID']>=0 && nbt['mID']==15441){return YELLOW+BOLD+nbt['eID']}
+		</line>
+		
+		<!--超净室 -->
+		<line displayname="§b洁净度">
+            if(nbt['mID']==1172 || nbt['mID'] == 19024){return YELLOW+(nbt['mEfficiency'] / 100).toFixed(2)+AQUA+" %"}
+		</line>
+		
+		<line displayname="§b当前模式 ">
+			if(isBetween(11100,11107,nbt['mID']))
+				switch(nbt['mAccelMode']){
+					case 0:return Mode('方块模式');break;
+					case 1:return Mode('实体模式');break;
+				}
+			if(nbt['mID']==792)
+				switch(nbt['mFormingMode']){
+					case 0:return Mode('卷板机');break;
+					case 1:return Mode('冲压机床');break;
+				}
+			if(nbt['mID']==799)
+				switch(nbt['mMode']){
+					case 0:return Mode('质量发生器');break;
+					case 1:return Mode('回收机');break;
+				}
+			if(nbt['mID']==850)
+				switch(nbt['mMode']){
+					case 0:return Mode('洗矿机');break;
+					case 1:return Mode('简易洗矿池');break;
+					case 2:return Mode('化学浸洗机');break;
+				}
+			if(nbt['mID']==860)
+				switch(nbt['machineMode']){
+					case 0:
+						return YELLOW+'模式[A]'
+							+"\\n"+GREEN+"|电路20|"+TAB+ALIGNRIGHT+GREEN+"压缩机"
+							+"\\n"+GREEN+"|电路21|"+TAB+ALIGNRIGHT+GREEN+"车床"
+							+"\\n"+GREEN+"|电路22|"+TAB+ALIGNRIGHT+GREEN+"磁化机";
+						break;
+					case 1:
+						return YELLOW+'模式[B]'
+							+"\\n"+GREEN+"|电路20|"+TAB+ALIGNRIGHT+GREEN+"发酵槽"
+							+"\\n"+GREEN+"|电路21|"+TAB+ALIGNRIGHT+GREEN+"流体提取机"
+							+"\\n"+GREEN+"|电路22|"+TAB+ALIGNRIGHT+GREEN+"固体提取机";
+						break;
+					case 2:
+						return YELLOW+'模式[C]'
+							+"\\n"+GREEN+"|电路20|"+TAB+ALIGNRIGHT+GREEN+"激光蚀刻机"
+							+"\\n"+GREEN+"|电路21|"+TAB+ALIGNRIGHT+GREEN+"高压釜"
+							+"\\n"+GREEN+"|电路22|"+TAB+ALIGNRIGHT+GREEN+"流体固化机";
+						break;
+				}
+			if(nbt['mID']==862)
+				switch(nbt['mPlasmaMode']){
+					case 0:return Mode('电弧炉');break;
+					case 1:return Mode('等离子电弧炉');break;
+				}
+			if(nbt['mID']==992)
+				switch(nbt['mCuttingMode']){
+					case 0:return Mode('切片机');break;
+					case 1:return Mode('切割机');break;
+				}
+			if(nbt['mID']==995)
+				switch(nbt['mDehydratorMode']){
+					case 0:return Mode('真空炉');break;
+					case 1:return Mode('脱水机');break;
+				}
+			if(nbt['mID']==31021)
+				switch(nbt['mMode']){
+					case 0:return Mode('蒸馏塔');break;
+					case 1:return Mode('蒸馏室');break;
+				}
+			if(nbt['mID']==32018)
+				switch(nbt['RunningMode']){
+					case 0:return Mode('精密模式');break;
+					case 1:return Mode('常规模式');break;
+				}
+			if([865,866,1152,1131,32016].indexOf(nbt['mID'])>-1)
+				switch(nbt['turbineFitting']){
+					case 0:return Mode('紧');break;
+					case 1:return Mode('松');break;
+				}
+		</line>
+        
+		<line displayname="§b当前模式 ">
+			if([865,866,31073,31074,31076].indexOf(nbt['mID'])>-1)
+				switch(nbt['mFastMode']){
+					case 0:return YELLOW+'低速16X';break;
+					case 1:return YELLOW+'高速48X';break;
+				}
+		</line>
+		
+		<!--XX喷涂颜色XX -->
+		<line displayname="§b喷涂颜色 ">
+			var hatchcolor = ['黑色','红色','绿色','棕色','蓝色','紫色','青色','淡灰','灰色','粉色','黄绿','黄色','淡蓝','品红','橙色','白色'];
+            if(nbt['mColor']>0){return YELLOW+hatchcolor[nbt['mColor']-1]}
+		</line>
+		
+		<!--XXAE_HatchXX -->
+		<line displayname="§6ME-自动拉取">
+			if 	(nbt['autoStock'] != undefined || nbt['autoPull'] != undefined){
+                if	(nbt['mID'] != 2717 && nbt['mID'] != 2718){
+                    if	(nbt['autoStock'] != undefined) {return judge(nbt['autoStock'])}
+                    if	(nbt['autoPull'] != undefined)  {return judge(nbt['autoPull'])}}}
+		</line>
+		<line displayname="§6ME-其余面连接">
+			if(nbt['additionalConnection']>=0) {return judge(nbt['additionalConnection'])}
+		</line>
+		<line displayname="§6数据存储-物品">
+				if(nbt['mID']==2710&&nbt['cachedItems']!=undefined)
+			{
+				outputString = "\\n";
+				for (i=0;  nbt['cachedItems'][i] != undefined; i++)
+				 {			
+					outputString += YELLOW +standards(nbt['cachedItems'][i]['size'])+"个"+GREEN+name(nbt['cachedItems'][i]['itemStack'])+ALIGNRIGHT+"\\n" ;
+				}	
+				 return  outputString;
+			}
+		</line>
+		<line displayname="§6数据存储-流体"> 
+			if(nbt['mID']==2713&&nbt['cachedFluids']!=undefined)
+			{	outputString = "\\n"; 
+			    for(i=0; nbt['cachedFluids'][i]!=undefined; i++) 
+			{	
+				outputString += AQUA+standards(nbt['cachedFluids'][i]['size'])+YELLOW+"L "+GREEN+  fluidName(nbt['cachedFluids'][i]['fluidStack']['FluidName'])+ALIGNRIGHT+ "\\n" ; 
+			}; 
+				return outputString; 
+			};	
+		</line>
+		
+		<!--XX鸿蒙之眼_HomeXX -->
+		<line displayname="§6概率">
+			if (nbt['mID']==15410 && nbt['mActive']==1){return YELLOW+(nbt['eyeOfHarmonyOutputrecipeSuccessChance']*100).toFixed(0)+YELLOW+"%"}
+		</line>
+		<line displayname="§6超频">
+			var CM = nbt['eyeOfHarmonyOutputcurrentCircuitMultiplier'];
+			if (CM>=0){return GOLD+" 超 "+YELLOW+standards(CM)+GOLD+" 频 "}
+		</line>
+		<line displayname="§6星阵">
+			AAeoh=nbt['eyeOfHarmonyOutputastralArrayAmount'];
+			if (nbt['mID']==15410 && AAeoh!=0){return GOLD+" 数 "+YELLOW+standards(AAeoh)+GOLD+" 量 "}
+		</line>
+		<line displayname="§6星阵">
+			PAeoh=nbt['eyeOfHarmonyOutputparallelAmount'];
+			if (nbt['mID']==15410 && PAeoh!=0 && AAeoh!=0){return GOLD+" 并 "+YELLOW+standards(PAeoh)+GOLD+" 行 "}
+		</line>
+		<line displayname="§6运行配方">
+			if (nbt['mWorks']>=0 && nbt['mID']==15410){return GOLD+name(nbt['Inventory']['0'])}
+		</line>
+		<line displayname="§6恒星等离子需求">
+			RMeoh=nbt['stored.fluid.rawstarmatter'];
+			var Cau = 12.4*Math.pow(10,3)*PAeoh*Caceoh();
+			if (nbt['mID']==15410 && nbt['mActive']==0 && AAeoh!=0 && nbt['Inventory'][0]['Count']!=undefined)
+				{return YELLOW+(RMeoh/Cau*100).toFixed(2)+AQUA+" %"+
+					"\\n"+AQUA+"====("+YELLOW+standards(RMeoh)+"L"+GOLD+"/"+LPURPLE+standards(Cau)+"L"+AQUA+")===="
+					}
+		</line>
+		<line displayname="§6氢氦需求">
+			if (nbt['mID']==15410 && nbt['mActive']==0 && AAeoh==0)
+				{return "\\n"+AQUA+"====("+YELLOW+standards(nbt['stored.fluid.hydrogen'])+"L"+GOLD+"/"+LPURPLE+Caceoh()+"GL"+AQUA+"氢)===="+
+						"\\n"+AQUA+"====("+YELLOW+standards(nbt['stored.fluid.helium'])+"L"+GOLD+"/"+LPURPLE+
+				Caceoh()+"GL"+AQUA+"氦)===="
+					}
+		</line>
+		
+		<!--XX鸿蒙老登爆金币测试XX -->
+		<line displayname="§6鸿蒙老登">
+			var laodeng = nbt['eyeOfHarmonyOutputfluidOutput']['0fluidAmount'];
+			if (nbt['mID']==15410 && nbt['mActive']==1){return laodeng>0?GOLD+"老登已经爆金币(产岩浆)":RED+"老登速速爆金币(产时空)"}
+		</line>
+		<line displayname="§b老登的时空">
+			var rtier = nbt['eyeOfHarmonyOutputrocketTier']+1;
+			var fluid_spaceTime = (PAeoh - nbt['eyeOfHarmonyOutputsuccessfulParallelAmount']) * 14400 * Math.pow(2,rtier) * nbt['eyeOfHarmonyOutputrecipeSuccessChance'].toFixed(2);
+			if (nbt['mID']==15410 && nbt['mActive']==1 && fluid_spaceTime > 0){return GREEN+standards(fluid_spaceTime)+YELLOW+"L"}
+		</line>
+		<line displayname="§b老登的岩浆">
+			var outputFluid_count = nbt['eyeOfHarmonyOutputfluidOutput']['eyeOfHarmonyOutputnumberOfFluids'];
+			var fluid_Universium = nbt['eyeOfHarmonyOutputfluidOutput'][(outputFluid_count-1).toString() + "fluidAmount"];
+			var fluid_rawstarmatter = nbt['eyeOfHarmonyOutputfluidOutput'][(outputFluid_count-2).toString() + "fluidAmount"];
+			if (nbt['mID']==15410 && nbt['mActive']==1 && fluid_Universium > 0){return GREEN+standards(fluid_rawstarmatter)+YELLOW+"L"+
+			"\\n"+"§b老登的宇宙素"+TAB+ALIGNRIGHT+GREEN+standards(fluid_Universium)+YELLOW+"L"}
+		</line>
+		
+		<!--XX武德之眼_HappinessMasterXX -->
+		<line displayname="§6存量-水:">
+			if (nbt['mID']==19034 && nbt['mActive']==0){
+				return AQUA+standards(nbt['storedWater'])+YELLOW+" L"+
+				"\\n"+"§6存量-岩浆:"+TAB+ALIGNRIGHT+AQUA+standards(nbt['storedLava'])+YELLOW+" L"
+				}
+		</line>
+		
+		<!--XX戴森球_GalaxyXX -->
+		<line displayname="§6缓存数">
+			if (nbt['moduleCount']>=0){return YELLOW+standards(nbt['moduleCount'])+GOLD+" 个"}
+		</line>
+		<line displayname="§6总输出">
+			if (nbt['euPerTick']>=0 && nbt['mID']==14001){return YELLOW+formatBytes(nbt['euPerTick'])+GOLD+" EU/t"}
+		</line>
+		
+		<!--XX兰波顿XX -->
+		<line displayname="§dEU网络">
+			if (nbt['wireless_mode_cooldown']>=0 && nbt['wireless_mode']!=0){return YELLOW+((nbt['wireless_mode_cooldown']/6000)*100).toFixed(1)+LPURPLE+" %"+"\\n"+"§d剩余时间"+TAB+ALIGNRIGHT+formatTimes(6000 - nbt['wireless_mode_cooldown'])}
+		</line>
+
+		<line displayname="§d加速范围">
+			if (nbt['mAccelMode']==0 && nbt['mRadius']>=0){return GOLD+'✦'+YELLOW+nbt['mRadius']+AQUA+'方块'+GOLD+'✦'}
+		</line>
+		<line displayname="§d加速等级">
+			if (nbt['mAccelMode']>=0 && nbt['mSpeed']>=0){return GOLD+'✦'+YELLOW+Math.pow(2,nbt['mSpeed'])+AQUA+'X'+GOLD+'✦'}
+		</line>
+		
+		<!--锅炉：温度 -->
+		<line displayname="§e温度">
+            if([100,105,114].indexOf(nbt['mID'])>-1){return YELLOW+nbt['mTemperature']+GREEN+" /"+GOLD+" 500"+YELLOW+" C"}
+		    if([101,102].indexOf(nbt['mID'])>-1){return YELLOW+nbt['mTemperature']+GREEN+" /"+GOLD+" 1000"+YELLOW+" C"}
+			if(nbt['mID']==753){return YELLOW+nbt['mTemperature']+GREEN+" /"+GOLD+" 1250"+YELLOW+" C"}
+			if(nbt['mID']==754){return YELLOW+nbt['mTemperature']+GREEN+" /"+GOLD+" 1500"+YELLOW+" C"}
+			if(nbt['mID']==755){return YELLOW+nbt['mTemperature']+GREEN+" /"+GOLD+" 1750"+YELLOW+" C"}
+		</line>
+		
+		<!--XX合金冶炼炉XX -->
+		<line displayname="§6炖屎详情">
+			if((nbt['mID']==31150 || nbt['mID']==810))
+				switch(nbt['mActive']){
+					case 0:return DGRAY+"ω摸鱼中ω";break;
+					case 1:return GOLD+"ω炖屎中ω";break;
+				}
+		</line>
+		
+		<!--XX Nxer's机器 XX -->
+		<line displayname="§b过载时间">
+			if (nbt['overloadTime']>=0 && nbt['mID']==19013){return GOLD+formatTimes(nbt['overloadTime'])}
+		</line>
+		<line displayname="§b引力透镜时间">
+			if (nbt['gravitationalLensTime']>=0 && nbt['mID']==19014){return GOLD+formatTimes(nbt['gravitationalLensTime'])}
+		</line>
+		<line displayname="§b顶点环数">
+			if (nbt['amountRings']>=0 && (nbt['mID']==19003)){return GOLD+"✦ "+nbt['amountRings']+" ✦"}
+		</line>
+		<line displayname="§b环数">
+			if (nbt['rings']>=0 && (nbt['mID']==19007)){return GOLD+"✦ "+nbt['rings']+" ✦"}
+		</line>
+		<line displayname="§b线圈数">
+			if (nbt['piece']>=0 && (nbt['mID']==19008)){return GOLD+"✦ "+nbt['piece']+" ✦"}
+		</line>
+		<line displayname="§b层数">
+			if (nbt['piece']>=0 && (nbt['mID']==19009||nbt['mID']==19011)){return GOLD+"✦ "+nbt['piece']+" ✦"}
+		</line>
+		<line displayname="§b发生器等级">
+			var Gent=['遏制','终极遏制','粗制','原始','稳定','先进','卓越','异星','完美','太初','鸿蒙'];
+			if (nbt['fieldGeneratorTier']>0 && (nbt['mID']==19010||nbt['mID']==19012)){return GOLD+"✦ "+Gent[nbt['fieldGeneratorTier']-1]+" ✦"}
+		</line>
+        
+		<line displayname="§b无损超频">
+			if (nbt['mID']==19002){return AQUA+judge(nbt['enablePerfectOverclockSignal']==0?0:1)}
+			if (nbt['mID']==19003){return AQUA+judge(nbt['amountRings']<8?0:1)}
+			if (nbt['mID']==19011){return AQUA+judge(nbt['piece']<16?0:1)}
+		</line>
+		<line displayname="§b机器模式">
+			if (nbt['mID']==19001)
+				switch(nbt['mode']){
+					case 0:return Mode("深度化学扭曲仪");break;
+					case 1:return Mode("化学反应釜");break;
+				}
+			if (nbt['mID']==19002 )
+				switch(nbt['mode']){
+					case 0:return Mode("激光蚀刻模式");break;
+					case 1:return Mode("光子掌控者");break;
+				}
+			if (nbt['mID']==19003 )
+				switch(nbt['mode']){
+					case 0:return Mode("奇迹顶点模式");break;
+					case 1:return Mode("量子逆变模式");break;
+				}
+			if (nbt['mID']==19004 )
+				switch(nbt['mode']){
+					case 0:return Mode("压模机");break;
+					case 1:return Mode("卷板机");break;
+					case 2:return Mode("冲压机床");break;
+					case 3:return Mode("锻造锤");break;
+				}
+			if (nbt['mID']==19005 )
+				switch(nbt['mode']){
+					case 0:return Mode("流体固化模式");break;
+					case 1:return Mode("流体提取模式");break;
+				}
+			if (nbt['mID']==19006 ){return Mode("搅拌机")}
+			if (nbt['mID']==19007 )
+				switch(nbt['mode']){
+					case 0:return Mode("电磁离析机");break;
+					case 1:return Mode("磁化机");break;
+				}
+			if (nbt['mID']==19008 ){return Mode("线材扎机")}
+			if (nbt['mID']==19009 )
+				switch(nbt['mode']){
+					case 0:return Mode("切割机模式");break;
+					case 1:return Mode("切片机模式");break;
+					case 2:return Mode("车床模式");break;
+				}
+			if (nbt['mID']==19010)
+				switch(nbt['mode']){
+					case 0:return Mode("压缩机模式");break;
+					case 1:return Mode("提取机模式");break;
+					case 2:return Mode("粒子对撞机模式");break;
+					case 3:return Mode("电动聚爆压缩机");break;
+				}
+			if (nbt['mID']==19011)
+				switch(nbt['mode']){
+					case 0:return Mode("电解机模式");break;
+					case 1:return Mode("离心机模式");break;
+				}
+			if (nbt['mID']==19012)
+				switch(nbt['mode']){
+					case 0:return Mode("高压釜模式");break;
+					case 1:return Mode("晶胞铸造器");break;
+					case 2:return Mode("化学浸洗机");break;
+				}
+			if (nbt['mID']==19014)
+				switch(nbt['mode']){
+					case 0:return Mode("发电模式");break;
+					case 1:return Mode("浓缩光子模式");break;
+				}
+			if (nbt['mID']==19016)
+				switch(nbt['mode']){
+					case 0:return Mode("合金冶炼炉模式");break;
+					case 1:return Mode("恒星锻炉模式");break;
+				}
+			if (nbt['mID']==19025)
+				switch(nbt['mode']){
+					case 0:return Mode("细菌培养缸模式");break;
+					case 1:return Mode("培养缸自动化模式");break;
+					case 2:return Mode("酿造室模式");break;
+					case 3:return Mode("发酵槽模式");break;
+				}
+			if (nbt['mID']==19500)
+				switch(nbt['mode']){
+					case 0:return Mode("符文雕刻模式");break;
+					case 1:return Mode("魔力灌注模式");break;
+				}
+			if (nbt['mID']==19031)
+				switch(nbt['mode']){
+					case 0:return Mode("蒸馏塔模式");break;
+					case 1:return Mode("蒸馏室模式");break;
+				}
+			if (nbt['mID']==19037)
+				switch(nbt['mode']){
+					case 0:return Mode("熔炉模式");break;
+					case 1:return Mode("合金炉模式");break;
+				}
+			if (nbt['mID']==19046)
+				switch(nbt['mode']){
+					case 0:return Mode("电弧炉");break;
+					case 1:return Mode("等离子电弧炉");break;
+					case 2:return Mode("聚变反应堆");break;
+					case 3:return Mode("星核发生器");break;
+				}
+			if (nbt['mID']==19048)
+				switch(nbt['fluidMode']){
+					case 0:return Mode("装罐机");break;
+					case 1:return Mode("流体灌装机");break;
+				}
+			if (nbt['mID']==19052)
+				switch(nbt['fluidMode']){
+					case 0:return Mode("装罐机");break;
+					case 1:return Mode("流体灌装机");break;
+				}
+		</line>
+		
+		<line displayname="§b发生器等级">
+			var Gent=['时空扭曲','粗制','原始','稳定','先进','卓越','异星','完美','太初','鸿蒙'];
+			if (nbt['fieldGeneratorTier']>0 && (nbt['mID']==19046)){return GOLD+"✦ "+Gent[nbt['fieldGeneratorTier']-1]+" ✦"}
+		</line>
+		
+		<line displayname="§b聚变线圈等级">
+			var fusionCoil = ['超导线圈','压缩聚变','进阶压缩聚变','MK-II原型','MK-II','进阶高能线圈'];
+			if (nbt['mID']==19046 && nbt['compactFusionCoilTier']>0){return GOLD+"✦ "+fusionCoil[nbt['compactFusionCoilTier']-1]+" ✦"}
+		</line>
+		
+		<line displayname="§d龙蛋:">
+			if (nbt['mID']==19026){
+				return LPURPLE+nbt['mDragonEggs']+
+						"\\n"+"§a爬行者蛋:"+TAB+ALIGNRIGHT+GREEN+nbt['mCrepperEggs']+
+						"\\n"+"§6无尽之蛋:"+TAB+ALIGNRIGHT+GOLD+nbt['mInfinityEggs']+
+						"\\n"+"§6当前层级:"+TAB+ALIGNRIGHT+GOLD+nbt['mPieces']
+			}
+		</line>
+		
+		<line displayname="§b机器模式">
+			if (nbt['mID']==19030){
+				if (nbt['isWirelessMode']==0){
+					switch(nbt['mode']){
+						case 0:return Mode("高速模式");break;
+						case 1:return Mode("饕餮模式");break;
+					}
+				}else{return LPURPLE+"无线模式"}
+			}
+		</line>
+		
+		<line displayname="§b熔炼并行数">
+			if (nbt['mID']==19037){
+				if (nbt['coilTier']==1){
+					return YELLOW+standards(nbt['maxProcessNormalMode'])+GOLD+'个'
+					}
+				if (nbt['coilTier']>1){return LPURPLE+"无限并行"}
+			}
+		</line>
+		
+		<!--Nxer's 人造恒星-->
+		<line displayname="§b稳定力场">
+			GentStab=['粗制','原始','稳定','先进','卓越','异星','完美','太初','鸿蒙'];
+			if (nbt['tierStabilisationField']>=2 && nbt['mID']==19015){return GOLD+GentStab[nbt['tierStabilisationField']-2]}
+		</line>
+		<line displayname="§b压缩时空场">
+			if (nbt['tierDimensionField']>=2 && nbt['mID']==19015){return GOLD+GentStab[nbt['tierDimensionField']-2]}
+		</line>
+		<line displayname="§b时间膨胀场">
+			if (nbt['tierTimeField']>=2 && nbt['mID']==19015){return GOLD+GentStab[nbt['tierTimeField']-2]}
+		</line>
+		<line displayname="§b发电倍率值">
+			if (nbt['outputMultiplier']>=0 && nbt['mID']==19015){return GREEN+nbt['outputMultiplier'].toFixed(0)}
+		</line>
+		<line displayname="§b原料回收几率">
+			if (nbt['rewardContinuous']>=0 && nbt['mID']==19015){return YELLOW+nbt['tierStabilisationField']*nbt['tierDimensionField']*nbt['tierTimeField']/10+AQUA+' %'}
+		</line>
+		<line displayname="§b连续运行奖励">
+			if (nbt['rewardContinuous']>=0 && nbt['mID']==19015){return YELLOW+(nbt['rewardContinuous']+100)+AQUA+' %'}
+		</line>
+		<line displayname="§b人造恒星发电总额">
+			var total = (nbt['currentOutputEU']*nbt['outputMultiplier']);
+			var total2 = total * 2147483647;
+			if (nbt['mActive']==1 && nbt['mID']==19015){return GOLD+'✦ '+YELLOW+sci_format(total.toFixed(0))+colorcier('MAX',3)+GOLD+' ✦'
+			+'\\n'+AQUA+'==='+GOLD+'✦ '+GREEN+"每Tick约 "+sci_format((total2/nbt['mMaxProgresstime']).toFixed(0))+GOLD+" EU/t"+' ✦'+AQUA+'==='}
+		</line>
+		
+		<!--XX超维度等离子锻炉XX -->
+		<line displayname="§6催化剂折扣">
+			if (nbt['mSolderingTool']!=0&&nbt['mID']==1004 && nbt['eLongDiscountValue']!=1){
+				return GOLD+((1-nbt['eLongDiscountValue'])*100).toFixed(2)+'%'
+			}
+		</line>
+		
+		<line displayname="§d当前稳定度">
+			if (nbt['mID']==3008){
+				return GOLD + nbt['blackHoleStability']
+			}
+		</line>
+		
+		<line displayname="§9转子耐久">
+		    a=nbt['Inventory']['0']['tag']['GT.ToolStats']['Damage'];
+			b=nbt['Inventory']['0']['tag']['GT.ToolStats']['MaxDamage'];
+			c=a==undefined?0:a;
+		    if(nbt['mEUt']!=undefined || nbt['mID']==30010)
+			if([1005,1131,1151,1152,1153,30010,32016].indexOf(nbt['mID'])>-1){return YELLOW+((1-c/b)*100).toFixed(2)+AQUA+" %"}
+		</line>
+		
+		<line displayname="§d运行电压">
+			if (nbt['mEUt']!=undefined && nbt['mEUt']!=0 && nbt['mStoredSteam']==0)
+			if ([1020,1021,1022,1023,1154,1172,19032,19033,31041,31078].indexOf(nbt['mID'])==-1)
+			if (Arrayofbl(nbt['mID']))
+			if (nbt['mSolderingTool']!=0 && Math.abs(nbt['mEUt'])<=Math.pow(2,29)){
+				return GOLD+'('+GetVtier(Math.abs(nbt['mEUt']))+GOLD+')'
+			}
+			if (nbt['mSolderingTool']!=0 && nbt['mID']==1004 && nbt['eLongEUPerTick']<=Math.pow(2,29)){
+				return GOLD+'('+GetVtier(Math.abs(nbt['eLongEUPerTick']))+GOLD+')'
+			}
+			if (nbt['mSolderingTool']!=0 && nbt['costingWirelessEUTemp']!=undefined && Math.abs(nbt['costingWirelessEUTemp'])!=0 && Math.abs(nbt['costingWirelessEUTemp'])<=Math.pow(2,29)){
+				return GOLD+'('+GetVtier(Math.abs(nbt['costingWirelessEUTemp']))+GOLD+')'
+			}
+		</line>
+		
+		<!--MAX电流 -->
+		<line displayname="§dMAX-Tier">
+			var euWall = Math.pow(10,9) * 2;
+			if (nbt['mID']==14001 && nbt['euPerTick'] >= euWall){
+				return getMaxAmpere(Math.abs(nbt['euPerTick']))
+			}
+			if (Math.abs(nbt['mEUt']) >= euWall){
+				return getMaxAmpere(Math.abs(nbt['mEUt']))
+			}
+			if (Math.abs(nbt['eLongEUPerTick']) >= euWall){
+				return getMaxAmpere(Math.abs(nbt['eLongEUPerTick']))
+			}
+			if (nbt['costingWirelessEUTemp']!=undefined&&Math.abs(nbt['costingWirelessEUTemp']) >= euWall){
+				return getMaxAmpere(Math.abs(nbt['costingWirelessEUTemp']))
+			}
+		</line>
+		
+		<line displayname="§d运行功率">
+			if (nbt['mStoredSteam']==0 && nbt['mSolderingTool']!=0)
+			if ([1020,1021,1022,1023,1154,1172,13104,19032,19033,31041,31078].indexOf(nbt['mID'])==-1)
+			if (Arrayofbl(nbt['mID']))
+			if (Math.abs(nbt['mEUt']) < Math.pow(2,31) || Math.abs(nbt['eLongEUPerTick']) < Math.pow(2,31)) 
+			if (Math.abs(nbt['mEUt'])>0)
+			{return YELLOW+standards(Math.abs(nbt['mEUt']))+GOLD+" EU/t"}
+			if (Math.abs(nbt['eLongEUPerTick'])>0)
+			{return YELLOW+standards(Math.abs(nbt['eLongEUPerTick']))+GOLD+" EU/t"}
+		</line>
+		
+		<!--XX Nxer's戴森球 XX -->
+		<line displayname="§d接收能量">
+			var Age = 4;
+			var Ite = (nbt['usedPowerPoint']*nbt['stellarAndPlanetCoefficient']).toFixed(0);
+			if (nbt['mID']==19014)
+			{return YELLOW+standards(Ite*(nbt['gravitationalLensTime']==0?1:Age))+GOLD+"EU/t"}
+		</line>
+		
+		<!--蒸汽机器：功率 -->
+		<line displayname="§9蒸汽需求">
+		    if(nbt['mEUt']!=0 && nbt['mActive']==1)if(nbt['mEUt']!=undefined)
+			if(nbt['mStoredSteam']!=0 || nbt['mID']==19032 || nbt['mID']==19033 || nbt['mID']==31041 || nbt['mID']==31078){return YELLOW+Math.abs(nbt['mEUt'])+WHITE+" L/t"}
+		</line>
+		
+		<!--XX电池箱信息XX  -->
+		<line displayname="§d最大输入">
+			if (isBetteryBuffer(nbt['mID']) && isCharger(nbt['mID'])==false){
+				var b=0;
+				for(var i=0;i<nbt['Inventory'].length;i++){
+					if(nbt['Inventory'][i]['tag']!=undefined){
+						if(nbt['Inventory'][i]['tag']['GT.ItemCharge']!=undefined){
+							b+=1;
+						}else if(nbt['Inventory'][i]['tag']['charge']!=undefined){
+							b+=1;
+						}
+					}
+				}
+				return YELLOW+b*2+GOLD+' A'+
+						"\\n"+"§d最大输出"+TAB+ALIGNRIGHT+YELLOW+b+GOLD+' A'
+			}				
+		</line>
+		<line displayname="§d电池总和">
+			if (isBetteryBuffer(nbt['mID'])){
+				var a=0;
+				for(var i=0;i<nbt['Inventory'].length;i++){
+					if(nbt['Inventory'][i]['tag']!=undefined){
+						if(nbt['Inventory'][i]['tag']['GT.ItemCharge']!=undefined){
+							a=a+nbt['Inventory'][i]['tag']['GT.ItemCharge'];
+						}else if(nbt['Inventory'][i]['tag']['charge']!=undefined){
+							a=a+nbt['Inventory'][i]['tag']['charge'];
+						}
+					}
+				}
+				return YELLOW+formatBytes(a)+GOLD+" EU"
+			}
+		</line>
+		
+		<!--XX缓存能量_兰波顿LSCXX -->
+		<line displayname="§d缓存能量">
+		    if(nbt['mStoredEnergy']!=0 && nbt['mID']!=13106){return GREEN+formatBytes(nbt['mStoredEnergy'])+GOLD+" EU"}
+		</line>
+		<line displayname="§d存储能量">
+			if(nbt['mID']==13106){
+				abcd=storedNumber(""+nbt['stored']);
+				hijk=storedNumber(""+nbt['capacity']);
+				efg=(abcd/storedNumber(""+nbt['capacity'])*100).toFixed(5);
+				return GREEN+sci_format(abcd)+RED+" / "+GOLD+sci_format(hijk)+"\\n"+"§d存储占比"+TAB+ALIGNRIGHT+YELLOW+efg+AQUA+"%";	
+				}
+		</line>
+		
+		<!--机器：加工进度 -->
+		<line displayname="§9工作进程">
+		    if (nbt['mMaxProgresstime']!=0 && nbt['mMaxProgresstime']!=undefined)
+			if ([1020,1021,1022,1172,15300,19024,1023,1154,13104,32001,32014].indexOf(nbt['mID'])==-1)
+			if (Arrayofbl(nbt['mID'])){
+				var MPtime=nbt['mMaxProgresstime'];
+				var GPtime=nbt['mProgresstime'];
+				var Catime=(GPtime/MPtime*100).toFixed(2);
+				if (MPtime==1){return colorcier("你已经",0,1)+colorcier("超",1,1)+colorcier("到1T啦",0,1)}
+				else if (MPtime>1){return (((100/3)>Catime)?RED:((100/1.5)>Catime?AQUA:GREEN))+Catime+BLUE+"%"+
+					"\\n"+GREEN+"需耗时"+formatTimes(MPtime)+TAB+ALIGNRIGHT+BLUE+"剩余"+formatTimes(MPtime-GPtime)
+				
+				}
+			}
+		</line>	
+		
+		<!--蒸汽存量 -->
+        <line displayname="§9蒸汽存量">
+            if(nbt['mSteam']['Amount']!=undefined){return nbt['mSteam']['Amount']+" L"}
+		</line>
+        <line displayname="§9蒸汽存量">
+            if(nbt['mStoredSteam']!=0 && nbt['mStoredEnergy']==0){return nbt['mStoredSteam']+" L"}
+		</line>
+		
+		<!--大型热交换器：效率 -->
+		<line displayname="§b效率">
+		    if(nbt['mActive']!=0)
+			if(nbt['mID']==1154){return YELLOW+((nbt['mEfficiency']) / 100).toFixed(0)+WHITE+" %"}
+		</line>
+		
+		<!--大型热交换器：蒸汽生产速度 -->
+		<line displayname="§9正在生产">
+		    if(nbt['mActive']!=0) if(nbt['mEUt']!=undefined) if(nbt['mID']==1154)
+			if(nbt['superheated']==0){return GREEN+"蒸汽: "+YELLOW+Math.abs(nbt['mEUt']) * 2+YELLOW+" L/t"}
+		</line>
+		
+		<!--大型热交换器：过热蒸汽生产速度 -->
+		<line displayname="§9正在生产">
+		    if(nbt['mActive']!=0) if(nbt['mEUt']!=undefined) if(nbt['mID']==1154)
+			if(nbt['superheated']==1){return GREEN+"过热蒸汽: "+YELLOW+Math.abs(nbt['mEUt'])+WHITE+" L/t"}
+		</line>
+		
+		<!--大型锅炉：蒸汽生产速度 -->
+		<line displayname="§b蒸汽生产">
+		    if(nbt['mActive']!=0) if(nbt['mEUt']!=undefined)
+			if(nbt['mID']==1020 || nbt['mID']==1021 || nbt['mID']==1022 || nbt['mID']==1023){return YELLOW+Math.abs(nbt['mEUt']) * 2+WHITE+" L/t"}
+		</line>
+		
+		<!--多方块机器需要维修  -->
+        <line displayname="§c注意 !">
+            if (nbt['mWrench'] == 0 || nbt['mScrewdriver'] == 0 || nbt['mSoftHammer'] == 0 || nbt['mHardHammer'] == 0 || nbt['mSolderingTool'] == 0 || nbt['mCrowbar'] == 0) {
+                var result = '';
+                result += RED + "xx 需要维护 xx";
+                if (nbt['mWrench'] == 0) {
+                    result += '\\n' + RED + '注意 !' + TAB + ALIGNRIGHT + RED + "xx 需要扳手 xx"
+                }
+                if (nbt['mScrewdriver'] == 0) {
+                    result += '\\n' + RED + '注意 !' + TAB + ALIGNRIGHT + RED + "xx 需要螺丝刀 xx"
+                }
+                if (nbt['mSoftHammer'] == 0) {
+                    result += '\\n' + RED + '注意 !' + TAB + ALIGNRIGHT + RED + "xx 需要软锤 xx"
+                }
+                if (nbt['mHardHammer'] == 0) {
+                    result += '\\n' + RED + '注意 !' + TAB + ALIGNRIGHT + RED + "xx 需要锤子 xx"
+                }
+                if (nbt['mSolderingTool'] == 0) {
+                    result += '\\n' + RED + '注意 !' + TAB + ALIGNRIGHT + RED + "xx 需要电烙铁 xx"
+                }
+                if (nbt['mCrowbar'] == 0) {
+                    result += '\\n' + RED + '注意 !' + TAB + ALIGNRIGHT + RED + "xx 需要撬棍 xx"
+                }
+                return result
+            }
+        </line>	
+		
+		<!--能源仓 -->
+		<line displayname="§d电压等级">
+			if (nbt['mMachineBlock']!=undefined)
+			if (!isTransformer(nbt['mID'])) {
+                var vol = getMachineVoltage(nbt['mID']);
+                if (vol>2147483648) {
+                    return GOLD + '(' + DRED + UNDER +"ERROR" + GOLD + ')'
+                }
+				if (vol) {
+                    return GOLD + '(' + getColoredTier(vol) + GOLD + ')'
+                }
+            }
+		</line>
+		
+		<line displayname="§d额定电压">
+			if (nbt['mProgresstime']!=undefined)
+			if (nbt['mActive']==0&&nbt['mEUt']==0)
+				if (!isTransformer(nbt['mID'])) {
+					var vol = getMachineVoltage(nbt['mID']);
+					if (vol) {
+						return YELLOW + getFormatNumber(vol) + GOLD + ' EU/t'
+                }
+            }
+        </line>
+		
+		<line displayname="§d额定电压">
+			if (nbt['mMachineBlock']!=undefined|| Arrayofpower(nbt['mID']))
+		    if (!isTransformer(nbt['mID'])) {
+                var vol = getMachineVoltage(nbt['mID']);
+                if (vol) {
+                    return YELLOW + getFormatNumber(vol) + GOLD + ' EU/t'
+                }
+            }
+		</line>
+		
+		<!-- 机器物品输出 -->
+		<line displayname="§6物品输出">
+			if (nbt['mActive']==1) {
+				var outputString = "";
+				var iname = [];
+				var icount = [];
+				var id_match = [];
+				var coutile = 0;
+				var slot = 0;
+				var OilIf = nbt['mOutputItemsLength']==undefined?16:(nbt['mOutputItemsLength']+1);
+				for (var i=0;i<OilIf;i++){
+						if (nbt['mOutputItem'+i]==undefined){continue;}
+						else {
+							str = "mOutputItem"+i;
+							coutile++;
+							Idamage = nbt[str]['id']+":"+nbt[str]['Damage'];
+							if (id_match.indexOf(Idamage)==-1){
+								iname[slot] = name(nbt[str]);
+								icount[slot] = nbt[str]['Count'];
+								id_match[slot] = Idamage;
+								slot++;
+							}else {icount[id_match.indexOf(Idamage)] += nbt[str]['Count'];}}
+					}
+				if (coutile!=0){outputString +=GOLD+"循环"+GREEN+coutile+GOLD+"次" + ALIGNRIGHT+"\\n";
+				for (var i=0;i<iname.length;i++){
+					outputString += YELLOW + standards(icount[i]) + "个" + GREEN + iname[i] +ALIGNRIGHT;
+					if (i!=iname.length-1){
+						outputString +=  "\\n" ;
+					}
+				}
+				return outputString;}
+			}
+		</line>
+
+		<!--机器：液体产物 -->
+		<line displayname="§6流体输出">
+		    if(nbt['mOutputFluid']['Amount']!=undefined){return "\\n"+AQUA+standards(nbt['mOutputFluid']['Amount'])+YELLOW+"L "+GREEN+fluidName(nbt['mOutputFluid']['FluidName'])}
+		</line>
+				
+		<!-- 大型机器：液体产物 -->
+		<line displayname="§6流体输出"> 
+			if (nbt['eFlip'] != undefined && nbt['mActive']==1) {
+				var outputString2 = "";
+				var fname = [];
+				var fcount = [];
+				var fname_match = [];
+				var slot = 0;
+				var coutile = 0;
+				var OilIf = nbt['mOutputFluidsLength']==undefined?16:(nbt['mOutputFluidsLength']+1);
+				for (var i=0;i<OilIf;i++){
+					if (nbt['mOutputFluids'+i]==undefined){continue;}
+					else {
+							str = "mOutputFluids"+i;
+							coutile++;
+							Idamage = nbt[str]['FluidName'];
+							if (fname_match.indexOf(Idamage)==-1){
+								fname[slot] = fluidName(nbt[str]['FluidName']);
+								fcount[slot] = nbt[str]['Amount'];
+								fname_match[slot] = Idamage;
+								slot++;
+							}else {fcount[fname_match.indexOf(Idamage)] += nbt[str]['Amount'];}}
+					}
+				if (coutile!=0){outputString2 +=GOLD+"循环"+GREEN+coutile+GOLD+"次" + ALIGNRIGHT+"\\n";
+				for (var i=0;i<fname.length;i++){
+					outputString2 += AQUA + standards(fcount[i]) + YELLOW + "L" + GREEN + fname[i] +ALIGNRIGHT;
+					if (i!=fname.length-1){
+						outputString2 +=  "\\n" ;
+					}
+				}
+				return outputString2;}
+			}
+		</line> 
+		
+		<!--机箱状态  -->
+		<line displayname="§a超频比">
+			if(nbt['mID']==15450 && nbt['mActive']==1) {return AQUA+nbt['eOverClock']}
+		</line>
+		<line displayname="§a过压比">
+			if(nbt['mID']==15450 && nbt['mActive']==1) {return AQUA+nbt['eOverVolt']}
+		</line>
+		<line displayname="§c机箱热量">
+			if(nbt['mID']==15450 || nbt['mID']==18958) {return RED+standards(nbt['eHeat'])}
+		</line>
+		
+		<!-- 算力 -->
+		<line displayname="§c最低算力需求">
+			if(nbt['eDataR'] != undefined && nbt['mActive']==1 && nbt['eDataR'] != 0) {return standards(nbt['eDataR']) +RED+ "/s"}
+		</line>
+		<line displayname="§6当前算力">
+			if (isBetween(32019,32023,nbt['mID']) == false)
+			if ([15300,15410,32014,32017,32001,19024,19026,32024].indexOf(nbt['mID'])==-1)
+			if(nbt['eDataA'] != undefined && nbt['mActive']==1) {return YELLOW+standards(nbt['eDataA']) +GREEN+ "/s"}
+		</line>
+		<line displayname="§a总算力需求">
+			if(nbt['eComputationRequired'] != undefined && nbt['mActive']==1) {return GREEN+standards(nbt['eComputationRequired'] / 20)}
+		</line>
+		<line displayname="§9进度">
+			if(nbt['eComputationRequired'] != undefined && nbt['mActive']==1) {return YELLOW+standards(((nbt['eComputationRequired'] - nbt['eComputationRemaining']) / 20).toFixed(0)) +RED+ "/" +GOLD+ standards((nbt['eComputationRequired'] / 20 ))}
+		</line>
+	</tileentity>
+</oo>
