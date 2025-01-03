@@ -6,5 +6,7 @@
 + TST
 + nechar
 + qz连锁
++ 可编程仓室
++ aemobile
 ## 配置
 + 彩色OO
